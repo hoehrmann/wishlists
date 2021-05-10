@@ -1,5 +1,12 @@
 # Wishlist for SQLite
 
+## CREATE OR REPLACE VIEW
+
+Dropping existing views to handle updating an old schema and creating
+a new database is useless boilerplate. Should not have the restriction
+found in PostgreSQL (there you can only add columns to the view, not
+replace it entirely).
+
 ## `agg(... ORDER BY ...)`
 
 Suppose you generate a (mathematical) set like:
