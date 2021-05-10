@@ -61,7 +61,7 @@ extensions (where the extension takes care of filtering permissable
 extensions, like those located in a special directory). Something
 like:
 
-```
+```sql
 CREATE VIRTUAL TABLE ext USING extension_loader((
   statement from 'https://raw.githubusercontent.com/0x09/sqlite-statement-vtab/master/statement_vtab.c'
   ,
@@ -73,5 +73,23 @@ You could then load specifically the `extension_loader` extension,
 and let the database schema ensure the presence of dependencies.
 Allowing some reference to the extension source can then also make
 the schema self-documenting.
+
+## Poor man's MATERIALIZED VIEWs
+
+Something along these lines should be possible?
+
+```sql
+CREATE VIRTUAL TABLE mv AS materialized_views(
+
+  view_deriv_after_vertex WITH (
+    CREATE INDEX idx_vdav_xxx ON view_deriv_after_vertex();
+    CREATE INDEX idx_vdav_xxx ON view_deriv_after_vertex();
+  )
+
+);
+
+UPDATE mv SET refresh = TRUE;
+UPDATE mv SET disable = TRUE;
+```
 
 ## udf extension
