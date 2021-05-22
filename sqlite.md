@@ -92,4 +92,36 @@ UPDATE mv SET refresh = TRUE;
 UPDATE mv SET disable = TRUE;
 ```
 
+## Automatic tracing
+
+```sql
+CREATE VIRTUAL TABLE audit_trace USING audit_trace(
+  open           = '',
+  backup         = 1,
+  table          = 'trace',
+  sql_normalized = 1,
+  sql_expanded   = 1,
+  trace_stmt     = 1,
+  trace_profile  = 1,
+  trace_row      = 1,
+  trace_close    = 1,
+);
+```
+
+This would register a `sqlite3_trace_v2` callback and write data into
+the specified database table, filtered according to the trace settings.
+Optionally the original database would be cloned into the new one. At
+user option, `sqlite3_expanded_sql` and `sqlite3_normalized_sql` SQL
+text can be included in the table.
+
+There are some open questions when re-loading the database after the
+virtual table has been created, should that refresh the backup, keep
+the tracing data, how to trigger continued tracing...
+
+The main goal is to provide a ideally self-contained database that
+can be used to inspect performance or other problems, inclunding
+making it easy to submit something to the SQLite developers, with
+possibly extra tooling to scrub the database beforehand, like simple
+obfuscation of schema object names.
+
 ## udf extension
