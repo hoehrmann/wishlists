@@ -124,4 +124,7 @@ making it easy to submit something to the SQLite developers, with
 possibly extra tooling to scrub the database beforehand, like simple
 obfuscation of schema object names.
 
+`trace_profile` should probably also record the counter values from
+`sqlite3_stmt_status`.
+
 ## udf extension
