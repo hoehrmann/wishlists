@@ -52,6 +52,33 @@ SELECT ... FROM example WHERE root = :wanted
 It is hard to find extensions that already exist. It is hard to make
 them work for your environment.
 
+## Override function from running statement
+
+SQLite has this logic:
+
+```c
+  /* Check if an existing function is being overridden or deleted. If so,
+  ** and there are active VMs, then return SQLITE_BUSY. If a function
+  ** is being overridden/deleted but there are no active VMs, allow the
+  ** operation to continue but invalidate all precompiled statements.
+  */
+  p = sqlite3FindFunction(db, zFunctionName, nArg, (u8)enc, 0);
+  if( p && (p->funcFlags & SQLITE_FUNC_ENCMASK)==(u32)enc && p->nArg==nArg ){
+    if( db->nVdbeActive ){
+      sqlite3ErrorWithMsg(db, SQLITE_BUSY,
+        "unable to delete/modify user-function due to active statements");
+      assert( !db->mallocFailed );
+      return SQLITE_BUSY;
+    }else{
+      sqlite3ExpirePreparedStatements(db, 0);
+    }
+  }
+```
+
+That means you can create new functions with SQL statements, but you
+cannot replace or remove them. That frustrates extension authors who
+miss `CREATE FUNCTION` support in SQLite.
+
 ## Extension loader extension
 
 If you do not want to allow promiscuously loading extensions, but
