@@ -155,3 +155,42 @@ obfuscation of schema object names.
 `sqlite3_stmt_status`.
 
 ## udf extension
+
+
+## GENERATED ALWAYS is not a type
+
+This is somewhat unfortunate:
+
+```
+sqlite> create table t(id int, x int generated always as (true));
+Run Time: real 0.000 user 0.000345 sys 0.000103
+sqlite> create view v as select * from t;
+Run Time: real 0.000 user 0.000262 sys 0.000096
+sqlite> select * from pragma_table_info('v');
+cid  name  type                  notnull  dflt_value  pk
+---  ----  --------------------  -------  ----------  --
+0    id    int                   0                    0 
+1    x     int generated always  0                    0 
+Run Time: real 0.000 user 0.000331 sys 0.000121
+```
+
+Especially considering:
+
+```
+sqlite> create table t2 as select * from t;
+Run Time: real 0.000 user 0.000380 sys 0.000126
+sqlite> select * from pragma_table_info('t2');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    id    INT   0                    0 
+1    x     INT   0                    0 
+Run Time: real 0.001 user 0.000212 sys 0.000070
+sqlite> create table t3 as select * from v;
+Run Time: real 0.000 user 0.000290 sys 0.000120
+sqlite> select * from pragma_table_info('t3');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    id    INT   0                    0 
+1    x     INT   0                    0 
+Run Time: real 0.001 user 0.000000 sys 0.000385
+```
