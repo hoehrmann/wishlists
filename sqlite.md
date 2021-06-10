@@ -194,3 +194,26 @@ cid  name  type  notnull  dflt_value  pk
 1    x     INT   0                    0 
 Run Time: real 0.001 user 0.000000 sys 0.000385
 ```
+
+## Method to query schema object dependencies
+
+There should be a virtual table that details dependencies between
+schema objects (like tables and views). There is `TABLES_USED` via
+<https://www.sqlite.org/bytecodevtab.html> but it does not list
+view->view dependencies, and does not list the columns referenced
+only the tables. It is also not clear to me if there is a way to
+use it when the database driver in some programming environment
+has not been compiled with `-DSQLITE_ENABLE_BYTECODE_VTAB`.
+
+This is needed e.g. when you want to materialize VIEWs in their
+proper topological order. And that is something you might want to
+do to debug performance issues.
+
+Third-party extensions cannot really provide this functionality
+because this requires parsing the SQLs involved, which in turn
+only SQLite itself knows how to do.
+
+It is possible to get this information through `ALTER TABLE`
+rename operations (turning VIEWs temporarily into tables), but
+that is rather ugly, and `ALTER TABLE` is fairly buggy as of
+mid-2021.
