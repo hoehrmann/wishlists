@@ -217,3 +217,47 @@ It is possible to get this information through `ALTER TABLE`
 rename operations (turning VIEWs temporarily into tables), but
 that is rather ugly, and `ALTER TABLE` is fairly buggy as of
 mid-2021.
+
+Update: 3.36.0 probably improves ALTER TABLE RENAME TO, but
+ALTER TABLE RENAME COLUMN is too too broken to use for this.
+
+## xBestIndex and constant values
+
+When a VIRTUAL TABLE is used with one of the arguments bound
+to a constant
+
+```
+SELECT * FROM vtab('constant')
+```
+
+it would be nice if xBestIndex gets to know that to provide
+better plan cost and row count estimates to the optimizer.
+
+## VIRTUAL TABLE documentation problems
+
+* The `xBestIndex` method's primary function is to help SQLite
+pass input values as arguments to `xFilter`. That could be made
+much more obvious.
+
+* xRowid is seemingly often implemented by vtable extensions as a
+simple row counter on the cursor, and the values might end up in
+xUpdate for the less common case of writable virtual tables. But
+the documentation also hints at cases where there may be multiple
+open cursors, and of course user code might read ROWIDs out of
+virtual tables. It seems likely that simple counters would then
+easily break expectations. The support for `WITHOUT ROWID` tables
+hints at that, but short of storing results from previous queries
+virtual table implementations might have a hard time to generate
+ROWIDs or corresponding PRIMARY KEY constraints as needed for
+WITHOUT ROWID tables. The documentation could do a better job in
+managing expectations here.
+
+## Doubt: Shadow tables and triggers
+
+Can untrusted code create/drop/alter trigger programs associated
+with shadow tables of virtual tables? If they can, would triggers
+run when the virtual table makes changes to the shadow tables? Do
+the programs then run as untrusted code or as trusted code? In
+other words, how does SQLite protect shadow tables from untrusted
+writes through trigger programs? This is probably just missing in
+the documentation, but could also be a security problem.
