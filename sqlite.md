@@ -261,3 +261,66 @@ the programs then run as untrusted code or as trusted code? In
 other words, how does SQLite protect shadow tables from untrusted
 writes through trigger programs? This is probably just missing in
 the documentation, but could also be a security problem.
+
+## PRAGMA_TABLE_INFO vs CREATE TABLE AS SELECT type handling
+
+```
+sqlite> create view v as select CAST(each.value AS INT) from json_each('[1,2,3]') each;
+Run Time: real 0.008 user 0.001449 sys 0.000000
+sqlite> create table t as select * from v;
+Run Time: real 0.008 user 0.000000 sys 0.001647
+sqlite> select * from pragma_table_info('v');
+cid  name                     type  notnull  dflt_value  pk
+---  -----------------------  ----  -------  ----------  --
+0    CAST(each.value AS INT)        0                    0 
+Run Time: real 0.001 user 0.000000 sys 0.000408
+sqlite> select * from pragma_table_info('t');
+cid  name                     type  notnull  dflt_value  pk
+---  -----------------------  ----  -------  ----------  --
+0    CAST(each.value AS INT)  INT   0                    0 
+Run Time: real 0.000 user 0.000250 sys 0.000134
+```
+
+## Odd table scans due to declared types:
+
+The only difference between these query plans is that table `vur` has
+no declared type in the first plan...
+
+```
+QUERY PLAN
+|--CO-ROUTINE step
+|  |--SETUP
+|  |  `--SCAN s
+|  `--RECURSIVE STEP
+|     `--COMPOUND QUERY
+|        |--LEFT-MOST SUBQUERY
+|        |  |--SCAN step
+|        |  |--SEARCH input USING INTEGER PRIMARY KEY (rowid=?)
+|        |  |--SCAN vur
+|        |  `--SEARCH t USING AUTOMATIC COVERING INDEX (goal_dc=? AND src_state=? AND via=?)
+|        `--UNION ALL
+|           |--SCAN step
+|           `--SEARCH n USING AUTOMATIC COVERING INDEX (goal_dc=? AND state=?)
+```
+
+... but in the second plan the declared type of all columns is INT:
+
+
+```
+QUERY PLAN
+|--CO-ROUTINE step
+|  |--SETUP
+|  |  `--SCAN s
+|  `--RECURSIVE STEP
+|     `--COMPOUND QUERY
+|        |--LEFT-MOST SUBQUERY
+|        |  |--SCAN step
+|        |  |--SEARCH input USING INTEGER PRIMARY KEY (rowid=?)
+|        |  |--SEARCH t USING AUTOMATIC COVERING INDEX (goal_dc=? AND src_state=?)
+|        |  `--SEARCH vur USING AUTOMATIC COVERING INDEX (representative=?)
+|        `--UNION ALL
+|           |--SCAN step
+|           `--SEARCH n USING AUTOMATIC COVERING INDEX (goal_dc=? AND state=?)
+`--SCAN step
+```
+
