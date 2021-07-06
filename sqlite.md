@@ -262,6 +262,56 @@ other words, how does SQLite protect shadow tables from untrusted
 writes through trigger programs? This is probably just missing in
 the documentation, but could also be a security problem.
 
+Update:
+
+```
+ % sqlite
+-- Loading resources from /home/bjoern/.sqliterc
+SQLite version 3.36.0 2021-06-11 13:18:56
+Enter ".help" for usage hints.
+Connected to a transient in-memory database.
+Use ".open FILENAME" to reopen on a persistent database.
+sqlite> .dbconfig defensive on
+          defensive on
+sqlite> CREATE VIRTUAL TABLE email USING fts3(sender, title, body);
+sqlite> INSERT INTO email(sender) VALUES('abc');
+sqlite> UPDATE email_content SET c0sender = 'XXX';
+(1) table email_content may not be modified in "UPDATE email_content SET c0sender = 'XXX';"
+Error: table email_content may not be modified
+```
+
+```
+sqlite> CREATE TRIGGER t AFTER INSERT ON email_content BEGIN
+   ...>   SELECT SQLITE_LOG(0, 'trigger');
+   ...>   UPDATE email_content SET c0sender = 'XXX';
+   ...>   END;
+sqlite> INSERT INTO email(sender) VALUES('123');
+(17) statement aborts at 16: [DELETE FROM 'main'.'email_segdir' WHERE level = ?] database schema has changed
+(17) statement aborts at 16: [INSERT INTO 'main'.'email_content' VALUES(?,(?),(?),(?))] database schema has changed
+(0) trigger
+(17) statement aborts at 24: [SELECT (SELECT max(idx) FROM 'main'.'email_segdir' WHERE level = ?) + 1] database schema has changed
+(17) statement aborts at 22: [SELECT coalesce((SELECT max(blockid) FROM 'main'.'email_segments') + 1, 1)] database schema has changed
+(17) statement aborts at 25: [REPLACE INTO 'main'.'email_segdir' VALUES(?,?,?,?,?,?)] database schema has changed
+(17) statement aborts at 39: [SELECT level, idx, end_block FROM 'main'.'email_segdir' WHERE level BETWEEN ? AND ? ORDER BY level DESC, idx ASC] database schema has changed
+sqlite> INSERT INTO email(sender) VALUES('123');
+(0) trigger
+```
+
+```
+sqlite> .dump email_content
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+CREATE TABLE IF NOT EXISTS 'email_content'(docid INTEGER PRIMARY KEY, 'c0sender', 'c1title', 'c2body');
+INSERT INTO email_content VALUES(1,'XXX',NULL,NULL);
+INSERT INTO email_content VALUES(2,'XXX',NULL,NULL);
+INSERT INTO email_content VALUES(3,'XXX',NULL,NULL);
+COMMIT;
+sqlite> 
+```
+
+So the shadow table write protection is ineffective when untrusted code
+can create triggers.
+
 ## PRAGMA_TABLE_INFO vs CREATE TABLE AS SELECT type handling
 
 ```
