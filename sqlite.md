@@ -374,3 +374,44 @@ QUERY PLAN
 `--SCAN step
 ```
 
+## pragma_table_info ignores schema
+
+```
+ bjoern@hpx360  ~  sqlite                                                                                     1 ↵  30.27  00:31:30
+-- Loading resources from /home/bjoern/.sqliterc
+SQLite version 3.36.0 2021-06-11 13:18:56
+Enter ".help" for usage hints.
+Connected to a transient in-memory database.
+Use ".open FILENAME" to reopen on a persistent database.
+sqlite> attach database ':memory:' as m;
+Run Time: real 0.001 user 0.000083 sys 0.000332
+sqlite> create table main.t(x int);
+Run Time: real 0.001 user 0.000000 sys 0.000431
+sqlite> create table m.t(x text);
+Run Time: real 0.001 user 0.000000 sys 0.000364
+sqlite> pragma main.table_info('t');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    x     int   0                    0 
+Run Time: real 0.000 user 0.000170 sys 0.000000
+sqlite> pragma m.table_info('t');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    x     text  0                    0 
+Run Time: real 0.000 user 0.000171 sys 0.000000
+sqlite> select * from main.pragma_table_info('t');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    x     int   0                    0 
+Run Time: real 0.000 user 0.000361 sys 0.000000
+sqlite> select * from m.pragma_table_info('t');
+cid  name  type  notnull  dflt_value  pk
+---  ----  ----  -------  ----------  --
+0    x     int   0                    0 
+Run Time: real 0.000 user 0.000242 sys 0.000000
+sqlite> 
+```
+
+>  PRAGMAs that return results and that have no side-effects can be accessed from ordinary SELECT statements as table-valued functions. For each participating PRAGMA, the corresponding table-valued function has the same name as the PRAGMA with a 7-character "pragma_" prefix. The PRAGMA argument and schema, if any, are passed as arguments to the table-valued function. 
+
+-- https://www.sqlite.org/pragma.html
